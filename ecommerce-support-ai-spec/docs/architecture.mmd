@@ -1,0 +1,16 @@
+flowchart LR
+  U[Customer / Staff browser] --> FE[React + TS frontend<br/>Vite :5173]
+  FE -->|REST + JWT| BE[Node.js Express API<br/>:4000]
+  BE --> DB[(PostgreSQL 16<br/>Prisma)]
+  BE --> AG[Gemini agent<br/>gemini-2.0-flash]
+  AG --> T1[get_order_details]
+  AG --> T2[search_return_policy]
+  AG --> T3[process_refund]
+  AG --> T4[escalate_to_human]
+  T1 --> BE
+  T2 --> POL[(Policy docs<br/>keyword RAG)]
+  T3 --> PAY[Simulated payment<br/>service]
+  T4 --> BE
+  BE --> AUD[(AuditLog)]
+  BE --> DOC[Swagger UI<br/>/api/docs]
+  STAFF[Support staff] -->|approve / reject| BE

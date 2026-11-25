@@ -1,0 +1,14 @@
+erDiagram
+  User ||--o{ Order : places
+  User ||--o{ Ticket : raises
+  User ||--o{ Message : sends
+  User ||--o{ AuditLog : triggers
+  Order ||--o{ Ticket : "linked to"
+  Order ||--o{ Refund : "refunded by"
+  Ticket ||--o{ Message : contains
+  Ticket ||--o{ Refund : "has"
+  Ticket ||--o{ Escalation : "escalated to"
+  Ticket ||--o{ InternalNote : "has"
+  Refund ||--o{ AuditLog : "audited as"
+  User ||--o{ Escalation : "assigned to"
+  User ||--o{ Refund : "reviewed by"

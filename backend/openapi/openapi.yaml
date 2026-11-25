@@ -1,0 +1,242 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Support Platform API
+  version: 1.0.0
+  description: Customer support, AI chat, refunds, escalations. Auth via Bearer JWT. See 04-API-SPECIFICATION.md for full contract.
+servers:
+  - url: http://localhost:4000/api
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      security: []
+      summary: Register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /auth/login:
+    post:
+      security: []
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+  /auth/me:
+    get:
+      summary: Current user
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/UserEnvelope' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+  /orders:
+    get:
+      summary: "List orders (customer: own; staff: all)"
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: customerSearch, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Error' }
+  /orders/{id}:
+    get:
+      summary: Order detail
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/Error' }
+  /tickets:
+    post:
+      summary: Create ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category, subject, description]
+              properties:
+                category: { type: string, enum: [ORDER_ISSUE, RETURN_REFUND, PAYMENT, PRODUCT_QUESTION, OTHER] }
+                subject: { type: string, minLength: 5, maxLength: 120 }
+                description: { type: string, minLength: 20, maxLength: 2000 }
+                orderId: { type: string }
+      responses:
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/Error' }
+    get:
+      summary: List tickets
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: priority, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, oldest, priority] } }
+      responses:
+        '200': { description: OK }
+  /tickets/{id}:
+    get:
+      summary: Ticket detail with thread + context
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/Error' }
+  /tickets/{id}/messages:
+    post:
+      summary: Add message
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties: { content: { type: string, minLength: 1, maxLength: 2000 } }
+      responses:
+        '201': { description: Created }
+  /refunds:
+    post:
+      summary: Request refund (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, amount, reason, idempotencyKey]
+              properties:
+                orderId: { type: string }
+                amount: { type: number, exclusiveMinimum: 0 }
+                reason: { type: string, minLength: 10, maxLength: 500 }
+                idempotencyKey: { type: string, format: uuid }
+                ticketId: { type: string }
+      responses:
+        '201': { description: Created }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    get:
+      summary: List refunds
+      responses: { '200': { description: OK } }
+  /refunds/{id}/review:
+    patch:
+      summary: Staff review refund
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [APPROVED, REJECTED, NEEDS_INFO] }
+                note: { type: string }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Error' }
+  /escalations:
+    get:
+      summary: Staff escalation queue
+      responses: { '200': { description: OK } }
+  /escalations/{id}/decision:
+    patch:
+      summary: Staff decide escalation
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [APPROVED, REJECTED, NEEDS_INFO] }
+                internalNote: { type: string }
+      responses: { '200': { description: OK } }
+  /chat:
+    post:
+      summary: AI chat (creates ticket if ticketId omitted)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                ticketId: { type: string }
+                message: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply: { type: string }
+                  ticketId: { type: string }
+                  actions: { type: array, items: { type: object } }
+  /health:
+    get:
+      security: []
+      summary: Health
+      responses: { '200': { description: OK } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [CUSTOMER, SUPPORT, ADMIN] }
+        createdAt: { type: string, format: date-time }
+    UserEnvelope:
+      type: object
+      properties: { user: { $ref: '#/components/schemas/User' } }
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        token: { type: string }
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: array, items: { type: object } }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }

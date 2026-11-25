@@ -1,0 +1,35 @@
+{
+  "note": "Dates are relative to seed run time (now). Passwords are hashed at seed time — never store plain text.",
+  "users": [
+    { "name": "Admin User", "email": "admin@shop.local", "password": "Admin@123", "role": "ADMIN" },
+    { "name": "Support Agent", "email": "support@shop.local", "password": "Support@123", "role": "SUPPORT" },
+    { "name": "Priya Sharma", "email": "priya@example.com", "password": "Customer@123", "role": "CUSTOMER" },
+    { "name": "Rahul Verma", "email": "rahul@example.com", "password": "Customer@123", "role": "CUSTOMER" }
+  ],
+  "orders": [
+    {
+      "displayId": "ORD-1001", "customerEmail": "priya@example.com", "status": "DELIVERED",
+      "deliveryDaysAgo": 2, "totalAmount": 2499,
+      "items": [{ "name": "Wireless Earbuds", "category": "Electronics", "qty": 1, "unitPrice": 2499 }]
+    },
+    {
+      "displayId": "ORD-1002", "customerEmail": "priya@example.com", "status": "DELIVERED",
+      "deliveryDaysAgo": 30, "totalAmount": 1899,
+      "items": [{ "name": "Cotton T-Shirt", "category": "Clothing", "qty": 1, "unitPrice": 1899 }]
+    },
+    {
+      "displayId": "ORD-1003", "customerEmail": "rahul@example.com", "status": "DELIVERED",
+      "deliveryDaysAgo": 3, "totalAmount": 8500,
+      "items": [{ "name": "Smart Watch", "category": "Electronics", "qty": 1, "unitPrice": 8500 }]
+    },
+    {
+      "displayId": "ORD-1004", "customerEmail": "rahul@example.com", "status": "SHIPPED",
+      "deliveryDaysAgo": null, "totalAmount": 999,
+      "items": [{ "name": "Paperback Novel", "category": "Books", "qty": 1, "unitPrice": 999 }]
+    }
+  ],
+  "tickets": [
+    { "customerEmail": "priya@example.com", "orderDisplayId": "ORD-1001", "category": "RETURN_REFUND", "subject": "Refund for earbuds", "status": "OPEN", "priority": "MEDIUM" },
+    { "customerEmail": "rahul@example.com", "orderDisplayId": "ORD-1003", "category": "RETURN_REFUND", "subject": "Return smart watch", "status": "ESCALATED", "priority": "HIGH" }
+  ]
+}

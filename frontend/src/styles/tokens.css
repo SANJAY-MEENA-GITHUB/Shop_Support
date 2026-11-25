@@ -1,0 +1,13 @@
+:root {
+  --surface: #0B0C0A;
+  --surface-2: #131511;
+  --border: #2A2D2A;
+  --text: #E8EAE8;
+  --muted: #8A918A;
+  --signal: #00E676;        /* primary accent: links, active states, APPROVED/PROCESSED */
+  --signal-red: #FF3B30;    /* REJECTED / FAILED / errors only */
+  --signal-amber: #FFB800;  /* ESCALATED / PENDING only */
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 0px;            /* no rounded corners, ever */
+  --shadow: none;           /* flat; 1px borders only */
+}
