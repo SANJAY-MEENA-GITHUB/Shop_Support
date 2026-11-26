@@ -3,7 +3,7 @@ import { Priority, Role, SenderType, TicketCategory, TicketStatus } from '@prism
 import { env } from '../config/env';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
-import { notFound } from '../lib/errors';
+import { businessRule, notFound } from '../lib/errors';
 import { isStaff } from '../middleware/auth';
 import { createEscalation } from '../services/escalation.service';
 import { SYSTEM_PROMPT } from './systemPrompt';
@@ -26,10 +26,14 @@ function inferCategory(message: string): TicketCategory {
 async function runGeminiAgent(params: {
   message: string;
   history: Array<{ senderType: SenderType; content: string }>;
+  linkedOrderDisplayId?: string | null;
   ctx: AgentToolContext;
 }): Promise<{ reply: string; actions: AgentActionLog[] }> {
   const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
   const actions: AgentActionLog[] = [];
+  const systemInstruction = params.linkedOrderDisplayId
+    ? `${SYSTEM_PROMPT}\nContext: This ticket is linked to order ${params.linkedOrderDisplayId}.`
+    : SYSTEM_PROMPT;
 
   const contents: Content[] = params.history
     .filter((m) => m.senderType !== SenderType.SYSTEM)
@@ -48,10 +52,11 @@ async function runGeminiAgent(params: {
       model: env.GEMINI_MODEL,
       contents,
       config: {
-        systemInstruction: SYSTEM_PROMPT,
+        systemInstruction,
         temperature: 0.2,
         maxOutputTokens: 1024,
         tools: [{ functionDeclarations: toolDeclarations }],
+        abortSignal: AbortSignal.timeout(20_000),
       },
     });
 
@@ -97,9 +102,10 @@ async function runGeminiAgent(params: {
     model: env.GEMINI_MODEL,
     contents,
     config: {
-      systemInstruction: SYSTEM_PROMPT,
+      systemInstruction,
       temperature: 0.2,
       maxOutputTokens: 1024,
+      abortSignal: AbortSignal.timeout(20_000),
     },
   });
 
@@ -117,7 +123,9 @@ export async function handleChat(input: {
   ticketId?: string;
   message: string;
 }): Promise<{ reply: string; ticketId: string; actions: AgentActionLog[] }> {
+  const trimmedMessage = input.message.trim();
   let ticket;
+  let orderedHistory: Array<{ senderType: SenderType; content: string }> = [];
 
   if (input.ticketId) {
     ticket = await prisma.ticket.findUnique({
@@ -127,43 +135,58 @@ export async function handleChat(input: {
     if (!ticket || (!isStaff(input.role) && ticket.customerId !== input.userId)) {
       throw notFound('Ticket not found');
     }
+    if (
+      !isStaff(input.role) &&
+      (ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED)
+    ) {
+      throw businessRule(
+        'Cannot reply to a resolved or closed ticket. Please open a new ticket.'
+      );
+    }
+
+    const history = await prisma.message.findMany({
+      where: { ticketId: ticket.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { senderType: true, content: true },
+    });
+    orderedHistory = history.reverse();
+
+    await prisma.message.create({
+      data: {
+        ticketId: ticket.id,
+        senderId: input.userId,
+        senderType: SenderType.CUSTOMER,
+        content: trimmedMessage,
+      },
+    });
   } else {
-    const rawSubject = input.message.trim().slice(0, 60);
+    const rawSubject = trimmedMessage.slice(0, 60);
     const subject = rawSubject.length >= 5 ? rawSubject : `Support chat: ${rawSubject}`;
     const description =
-      input.message.trim().length >= 20
-        ? input.message.trim()
-        : `${input.message.trim()} (created via support chat)`;
+      trimmedMessage.length >= 20
+        ? trimmedMessage
+        : `${trimmedMessage} (created via support chat)`;
 
     ticket = await prisma.ticket.create({
       data: {
         customerId: input.userId,
-        category: inferCategory(input.message),
+        category: inferCategory(trimmedMessage),
         subject,
         description,
         status: TicketStatus.OPEN,
         priority: Priority.MEDIUM,
+        messages: {
+          create: {
+            senderId: input.userId,
+            senderType: SenderType.CUSTOMER,
+            content: trimmedMessage,
+          },
+        },
       },
       include: { order: { select: { displayId: true } } },
     });
   }
-
-  const history = await prisma.message.findMany({
-    where: { ticketId: ticket.id },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-  });
-  const orderedHistory = history.reverse();
-
-  // Persist customer message
-  await prisma.message.create({
-    data: {
-      ticketId: ticket.id,
-      senderId: input.userId,
-      senderType: SenderType.CUSTOMER,
-      content: input.message.trim(),
-    },
-  });
 
   const ctx: AgentToolContext = {
     userId: input.userId,
@@ -177,19 +200,22 @@ export async function handleChat(input: {
   if (mode === 'gemini') {
     try {
       result = await runGeminiAgent({
-        message: input.message.trim(),
+        message: trimmedMessage,
         history: orderedHistory,
+        linkedOrderDisplayId: ticket.order?.displayId ?? null,
         ctx,
       });
     } catch (err) {
       logger.error({ err, ticketId: ticket.id, userId: input.userId }, 'Gemini agent error');
-      await createEscalation({
-        ticketId: ticket.id,
-        summary: 'AI agent encountered an upstream error; escalated for human review.',
-        priority: Priority.HIGH,
-        actorId: input.userId,
-        actorRole: input.role,
-      });
+      if (ticket.status !== TicketStatus.CLOSED) {
+        await createEscalation({
+          ticketId: ticket.id,
+          summary: 'AI agent encountered an upstream error; escalated for human review.',
+          priority: Priority.HIGH,
+          actorId: input.userId,
+          actorRole: input.role,
+        });
+      }
       result = {
         reply:
           "I'm having trouble processing that automatically right now. I have escalated your ticket so a human support specialist will review it shortly.",
@@ -198,7 +224,7 @@ export async function handleChat(input: {
     }
   } else {
     result = await runMockAgent({
-      message: input.message.trim(),
+      message: trimmedMessage,
       historyContents: orderedHistory
         .filter((m) => m.senderType === SenderType.CUSTOMER)
         .map((m) => m.content),

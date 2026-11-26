@@ -177,7 +177,10 @@ export function TicketDetail() {
                       <span className="text-muted">Total</span>
                       <span className="tabular">{formatCurrency(ticket.order.totalAmount)}</span>
                     </div>
-                    {ticket.order.status === 'DELIVERED' && ticket.refunds.length === 0 && (
+                    {ticket.order.status === 'DELIVERED' &&
+                      !ticket.refunds.some((r) =>
+                        ['PENDING_REVIEW', 'APPROVED', 'ESCALATED', 'PROCESSED'].includes(r.status)
+                      ) && (
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"

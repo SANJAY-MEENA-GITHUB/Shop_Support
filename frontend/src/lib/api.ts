@@ -47,6 +47,9 @@ export function getErrorMessage(err: unknown): string {
     if (data?.error?.message) {
       return data.error.message;
     }
+    if (!err.response) {
+      return `Cannot reach the backend server at ${baseURL}. Make sure the backend is running and accessed from http://localhost:5173.`;
+    }
     if (err.message) {
       return err.message;
     }

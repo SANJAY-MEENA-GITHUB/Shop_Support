@@ -1,5 +1,19 @@
+import React from 'react';
 import { MessageItem } from '../lib/types';
 import { formatDateTime } from '../lib/api';
+
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return <code key={idx}>{part.slice(1, -1)}</code>;
+    }
+    return <React.Fragment key={idx}>{part}</React.Fragment>;
+  });
+}
 
 function getRoleClass(senderType: MessageItem['senderType']): string {
   switch (senderType) {
@@ -33,7 +47,7 @@ export function ChatThread({ messages }: { messages: MessageItem[] }) {
               <span>{getSenderLabel(msg)}</span>
               <span className="tabular">{formatDateTime(msg.createdAt)}</span>
             </div>
-            <div className="chat-content">{msg.content}</div>
+            <div className="chat-content">{renderInlineMarkdown(msg.content)}</div>
           </div>
         ))
       )}

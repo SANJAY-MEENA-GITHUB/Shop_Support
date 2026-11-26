@@ -70,5 +70,17 @@ describe('Tickets & Conversations (T2)', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'IN_PROGRESS' });
     expect(p1.status).toBe(200);
+
+    const p2 = await request(app)
+      .patch(`/api/tickets/${ticketId}/status`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ status: 'RESOLVED' });
+    expect(p2.status).toBe(200);
+
+    const closedChat = await request(app)
+      .post('/api/chat')
+      .set('Authorization', `Bearer ${custToken}`)
+      .send({ ticketId, message: 'Reopening via chat' });
+    expect(closedChat.status).toBe(422);
   });
 });

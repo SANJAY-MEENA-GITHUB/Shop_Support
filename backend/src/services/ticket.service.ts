@@ -38,32 +38,29 @@ export async function createTicket(input: {
     resolvedOrderId = order.id;
   }
 
-  const ticket = await prisma.$transaction(async (tx) => {
-    const created = await tx.ticket.create({
-      data: {
-        customerId: input.customerId,
-        orderId: resolvedOrderId,
-        category: input.category,
-        subject: input.subject.trim(),
-        description: input.description.trim(),
-        status: TicketStatus.OPEN,
-        priority: Priority.MEDIUM,
-      },
-      include: {
-        order: { select: { id: true, displayId: true, status: true, totalAmount: true } },
-      },
-    });
+  const trimmedSubject = input.subject.trim();
+  const trimmedDescription = input.description.trim();
 
-    await tx.message.create({
-      data: {
-        ticketId: created.id,
-        senderId: input.customerId,
-        senderType: SenderType.CUSTOMER,
-        content: input.description.trim(),
+  const ticket = await prisma.ticket.create({
+    data: {
+      customerId: input.customerId,
+      orderId: resolvedOrderId,
+      category: input.category,
+      subject: trimmedSubject,
+      description: trimmedDescription,
+      status: TicketStatus.OPEN,
+      priority: Priority.MEDIUM,
+      messages: {
+        create: {
+          senderId: input.customerId,
+          senderType: SenderType.CUSTOMER,
+          content: trimmedDescription,
+        },
       },
-    });
-
-    return created;
+    },
+    include: {
+      order: { select: { id: true, displayId: true, status: true, totalAmount: true } },
+    },
   });
 
   return {

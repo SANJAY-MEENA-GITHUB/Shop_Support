@@ -36,7 +36,7 @@ export function StaffRefunds() {
       refundId: string;
       decision: 'APPROVED' | 'REJECTED';
     }) => api.patch(`/refunds/${refundId}/review`, { decision }),
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['staff', 'refunds'] });
       void queryClient.invalidateQueries({ queryKey: ['staff', 'count'] });
     },

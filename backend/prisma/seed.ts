@@ -1,5 +1,22 @@
+
+
+import fs from 'fs';
+import path from 'path';
 import { PrismaClient, Role, OrderStatus, TicketCategory, TicketStatus, Priority, SenderType, EscalationDecision } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+if (!process.env.DATABASE_URL) {
+  const candidates = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '../.env'),
+  ];
+  for (const envPath of candidates) {
+    if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      process.loadEnvFile(envPath);
+      break;
+    }
+  }
+}
 
 const prisma = new PrismaClient();
 
@@ -58,11 +75,12 @@ export async function main() {
 
   const ord1001 = await prisma.order.upsert({
     where: { displayId: 'ORD-1001' },
-    update: {},
+    update: { createdAt: daysAgo(5), deliveryDate: daysAgo(2) },
     create: {
       displayId: 'ORD-1001',
       customerId: priya.id,
       status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(5),
       deliveryDate: daysAgo(2),
       totalAmount: 2499.0,
       items: [{ name: 'Wireless Earbuds', category: 'Electronics', qty: 1, unitPrice: 2499 }],
@@ -71,11 +89,12 @@ export async function main() {
 
   await prisma.order.upsert({
     where: { displayId: 'ORD-1002' },
-    update: {},
+    update: { createdAt: daysAgo(34), deliveryDate: daysAgo(30) },
     create: {
       displayId: 'ORD-1002',
       customerId: priya.id,
       status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(34),
       deliveryDate: daysAgo(30),
       totalAmount: 1899.0,
       items: [{ name: 'Cotton T-Shirt', category: 'Clothing', qty: 1, unitPrice: 1899 }],
@@ -84,11 +103,12 @@ export async function main() {
 
   const ord1003 = await prisma.order.upsert({
     where: { displayId: 'ORD-1003' },
-    update: {},
+    update: { createdAt: daysAgo(6), deliveryDate: daysAgo(3) },
     create: {
       displayId: 'ORD-1003',
       customerId: rahul.id,
       status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(6),
       deliveryDate: daysAgo(3),
       totalAmount: 8500.0,
       items: [{ name: 'Smart Watch', category: 'Electronics', qty: 1, unitPrice: 8500 }],
@@ -97,14 +117,57 @@ export async function main() {
 
   await prisma.order.upsert({
     where: { displayId: 'ORD-1004' },
-    update: {},
+    update: { createdAt: daysAgo(2) },
     create: {
       displayId: 'ORD-1004',
       customerId: rahul.id,
       status: OrderStatus.SHIPPED,
+      createdAt: daysAgo(2),
       deliveryDate: null,
       totalAmount: 999.0,
       items: [{ name: 'Paperback Novel', category: 'Books', qty: 1, unitPrice: 999 }],
+    },
+  });
+
+  await prisma.order.upsert({
+    where: { displayId: 'ORD-1005' },
+    update: { createdAt: daysAgo(5), deliveryDate: daysAgo(2) },
+    create: {
+      displayId: 'ORD-1005',
+      customerId: priya.id,
+      status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(5),
+      deliveryDate: daysAgo(2),
+      totalAmount: 3499.0,
+      items: [{ name: 'Bluetooth Speaker', category: 'Electronics', qty: 1, unitPrice: 3499 }],
+    },
+  });
+
+  await prisma.order.upsert({
+    where: { displayId: 'ORD-1006' },
+    update: { createdAt: daysAgo(24), deliveryDate: daysAgo(20) },
+    create: {
+      displayId: 'ORD-1006',
+      customerId: priya.id,
+      status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(24),
+      deliveryDate: daysAgo(20),
+      totalAmount: 2799.0,
+      items: [{ name: 'Ceramic Coffee Maker', category: 'Home', qty: 1, unitPrice: 2799 }],
+    },
+  });
+
+  await prisma.order.upsert({
+    where: { displayId: 'ORD-1007' },
+    update: { createdAt: daysAgo(29), deliveryDate: daysAgo(25) },
+    create: {
+      displayId: 'ORD-1007',
+      customerId: priya.id,
+      status: OrderStatus.DELIVERED,
+      createdAt: daysAgo(29),
+      deliveryDate: daysAgo(25),
+      totalAmount: 1499.0,
+      items: [{ name: 'Desk Lamp', category: 'Home', qty: 1, unitPrice: 1499 }],
     },
   });
 

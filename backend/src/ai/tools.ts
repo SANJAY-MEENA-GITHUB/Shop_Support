@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import { Type, FunctionDeclaration } from '@google/genai';
 import { Priority, Role } from '@prisma/client';
 import { ApiError } from '../lib/errors';
-import { getOrderDetail } from '../services/order.service';
 import { requestRefund, validateEligibility } from '../services/refund.service';
 import { createEscalation } from '../services/escalation.service';
 import { searchReturnPolicy } from './policy';
@@ -109,14 +108,14 @@ export const toolDeclarations: FunctionDeclaration[] = [
 export const agentTools = {
   async get_order_details(ctx: AgentToolContext, args: { orderId: string }) {
     try {
-      const order = await getOrderDetail(args.orderId, ctx.userId, ctx.role);
       const eligibility = await validateEligibility(args.orderId, ctx.userId, ctx.role);
+      const { order } = eligibility;
       return {
         orderId: order.displayId,
         id: order.id,
         status: order.status,
         deliveryDate: order.deliveryDate ? order.deliveryDate.toISOString() : null,
-        totalAmount: order.totalAmount,
+        totalAmount: Number(order.totalAmount),
         items: order.items,
         refundableAmount: eligibility.refundableAmount,
         daysSinceDelivery: eligibility.daysSinceDelivery,

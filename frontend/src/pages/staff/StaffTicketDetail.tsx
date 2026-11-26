@@ -11,6 +11,14 @@ import { StatusBadge, PriorityBadge } from '../../components/StatusBadge';
 import { ChatThread } from '../../components/ChatThread';
 import { RefundTimeline } from '../../components/RefundTimeline';
 
+const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+  OPEN: ['OPEN', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED'],
+  IN_PROGRESS: ['IN_PROGRESS', 'RESOLVED', 'ESCALATED'],
+  ESCALATED: ['ESCALATED', 'IN_PROGRESS', 'RESOLVED'],
+  RESOLVED: ['RESOLVED', 'CLOSED'],
+  CLOSED: ['CLOSED'],
+};
+
 export function StaffTicketDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -234,11 +242,11 @@ export function StaffTicketDetail() {
                       value={status}
                       onChange={(e) => setStatus(e.target.value as TicketStatus)}
                     >
-                      <option value="OPEN">OPEN</option>
-                      <option value="IN_PROGRESS">IN_PROGRESS</option>
-                      <option value="ESCALATED">ESCALATED</option>
-                      <option value="RESOLVED">RESOLVED</option>
-                      <option value="CLOSED">CLOSED</option>
+                      {ALLOWED_TRANSITIONS[ticket.status].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>

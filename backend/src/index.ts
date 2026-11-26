@@ -17,6 +17,18 @@ async function bootstrap() {
     );
   });
 
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(
+        { port: env.PORT, err },
+        `Port ${env.PORT} is already in use. Stop the existing process or set a different PORT.`
+      );
+    } else {
+      logger.error({ err }, 'HTTP server error');
+    }
+    void prisma.$disconnect().finally(() => process.exit(1));
+  });
+
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down gracefully');
     server.close(async () => {

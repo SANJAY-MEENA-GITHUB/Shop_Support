@@ -42,10 +42,25 @@ function loadOpenApiSpec(): Record<string, unknown> {
 export function createApp() {
   const app = express();
 
+  const allowedOrigins = new Set(
+    [
+      env.FRONTEND_URL,
+      ...(env.NODE_ENV !== 'production'
+        ? ['http://localhost:5173', 'http://127.0.0.1:5173']
+        : []),
+    ].filter(Boolean)
+  );
+
   app.use(helmet());
   app.use(
     cors({
-      origin: env.FRONTEND_URL,
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
       credentials: true,
     })
   );

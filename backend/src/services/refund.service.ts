@@ -289,12 +289,14 @@ export async function requestRefund(input: {
     throw conflict('Idempotency key already used with a different refund payload');
   }
 
-  // R1: Ownership & existence
-  const order = await findOrderForRequester(
+  // R1 & eligibility: fetch order once and evaluate balance/window
+  const eligibility = await validateEligibility(
     input.orderId,
     input.requestedBy,
-    input.requesterRole
+    input.requesterRole,
+    input.amount
   );
+  const order = eligibility.order;
 
   // Verify ticket ownership if ticketId provided
   if (input.ticketId) {
@@ -305,13 +307,6 @@ export async function requestRefund(input: {
       throw notFound('Ticket not found');
     }
   }
-
-  const eligibility = await validateEligibility(
-    order.id,
-    input.requestedBy,
-    input.requesterRole,
-    input.amount
-  );
 
   // R5: Duplicate active refund
   if (eligibility.hasActiveRefund) {
@@ -372,7 +367,7 @@ export async function requestRefund(input: {
   }
 
   // R4: Amount <= refundable balance
-  if (input.amount <= 0 || input.amount > eligibility.refundableAmount) {
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > eligibility.refundableAmount) {
     throw businessRule(
       `Amount exceeds refundable balance of ₹${eligibility.refundableAmount.toFixed(2)}`
     );
